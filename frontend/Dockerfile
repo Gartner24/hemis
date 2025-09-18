@@ -17,8 +17,8 @@ RUN addgroup -S hemis && \
 COPY package*.json ./
 COPY yarn.lock* ./
 
-# Install dependencies
-RUN npm ci --only=production --no-audit --no-fund && \
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci --no-audit --no-fund && \
     npm cache clean --force
 
 # Copy source code
@@ -45,7 +45,7 @@ COPY --from=builder --chown=hemis-frontend-user:hemis /frontend/dist ./dist
 COPY --from=builder --chown=hemis-frontend-user:hemis /frontend/package*.json ./
 COPY --from=builder --chown=hemis-frontend-user:hemis /frontend/vite.config.ts ./
 
-# Install production dependencies
+# Install only production dependencies for runtime
 RUN npm ci --only=production --no-audit --no-fund && \
     npm cache clean --force && \
     rm -rf /tmp/* /var/cache/apk/*
