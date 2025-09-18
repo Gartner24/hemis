@@ -1,11 +1,9 @@
 # Multi-stage Dockerfile for HEMIS Backend
 
-# Stage 1: Build stage
 FROM python:3.12-alpine AS builder
-
 WORKDIR /backend
 
-# Install build dependencies
+# Install system dependencies
 RUN apk add --no-cache \
     gcc \
     musl-dev \
@@ -17,32 +15,26 @@ RUN apk add --no-cache \
 # Copy requirements first for caching
 COPY requirements.txt ./
 
-# Install dependencies into system (not --user!)
+# Install Python dependencies globally (no --user, ensures Gunicorn is on PATH)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Stage 2: Production stage
+# Stage 2: Production
 FROM python:3.12-alpine AS production
-
-# Install runtime dependencies
 RUN apk add --no-cache curl dumb-init
 
 # Create non-root user
 RUN addgroup -S hemis && \
-    adduser -S -G hemis hemis-backend-user && \
-    mkdir -p /var/log/hemis && \
-    chown -R hemis-backend-user:hemis /var/log/hemis
+    adduser -S -G hemis hemis-backend-user
 
 WORKDIR /backend
 
-# Copy installed packages from builder
+# Copy installed Python packages
 COPY --from=builder /usr/local /usr/local
 
 # Copy application code
 COPY --chown=hemis-backend-user:hemis . .
 
-# Environment for logs
-ENV LOG_FILE=/var/log/hemis/hemis.log
-
+# Switch to non-root
 USER hemis-backend-user
 
 EXPOSE 5000
