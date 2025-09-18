@@ -25,17 +25,8 @@ if [ ! -f ".env" ]; then
     echo "Warning: database/.env file not found"
     echo "Creating database/.env file with default values..."
     cat > .env << EOF
-# MySQL Admin Configuration
-MYSQL_ROOT_PASSWORD=YourSecureRootPassword
 MYSQL_ADMIN_USER=mysql_admin
-MYSQL_ADMIN_PASSWORD=YourAdminPassword
-
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=hemis_db
-DB_USER=santi
-DB_PASSWORD=Eldestructor66*
+MYSQL_ADMIN_PASSWORD=YY&$RefDwMN0@SKC
 EOF
 fi
 

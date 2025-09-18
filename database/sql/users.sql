@@ -21,13 +21,13 @@
 -- -----------------------------------------------------
 --  Super Administrator
 -- -----------------------------------------------------
-CREATE USER 'super_admin' IDENTIFIED BY 'SuperAdmin123';
+CREATE USER 'super_admin' IDENTIFIED BY 'sHjsbheV34^qhtd&';
 GRANT DELETE, SELECT, INSERT, UPDATE ON TABLE hemis_db.* TO 'super_admin';
 
 -- -----------------------------------------------------
 --  HR Administrator
 -- -----------------------------------------------------
-CREATE USER 'admin_hr' IDENTIFIED BY 'AdminHr123';
+CREATE USER 'admin_hr' IDENTIFIED BY 'sHjsbheV34^qhtd&';
 
 -- Core data access
 GRANT SELECT ON TABLE `hemis_db`.`identification_type` TO 'admin_hr';
@@ -65,7 +65,7 @@ GRANT SELECT ON TABLE `hemis_db`.`diagnosis_icd10` TO 'admin_hr';
 -- -----------------------------------------------------
 --  Medical Administrator
 -- -----------------------------------------------------
-CREATE USER 'admin_medical' IDENTIFIED BY 'AdminMedical123';
+CREATE USER 'admin_medical' IDENTIFIED BY 'sHjsbheV34^qhtd&';
 
 -- Core data access
 GRANT SELECT ON TABLE `hemis_db`.`identification_type` TO 'admin_medical';
@@ -115,7 +115,7 @@ GRANT SELECT ON TABLE `hemis_db`.`incident` TO 'admin_medical';
 -- -----------------------------------------------------
 --  Finance Administrator
 -- -----------------------------------------------------
-CREATE USER 'admin_finance' IDENTIFIED BY 'AdminFinance123';
+CREATE USER 'admin_finance' IDENTIFIED BY 'sHjsbheV34^qhtd&';
 
 -- Core data access
 GRANT SELECT ON TABLE `hemis_db`.`identification_type` TO 'admin_finance';
@@ -138,7 +138,7 @@ GRANT UPDATE, SELECT, INSERT, DELETE ON TABLE `hemis_db`.`appointment_invoice` T
 -- -----------------------------------------------------
 --  System Administrator
 -- -----------------------------------------------------
-CREATE USER 'admin_system' IDENTIFIED BY 'AdminSystem123';
+CREATE USER 'admin_system' IDENTIFIED BY 'sHjsbheV34^qhtd&';
 
 -- Core data management
 GRANT UPDATE, SELECT, INSERT, DELETE ON TABLE `hemis_db`.`identification_type` TO 'admin_system';
@@ -162,7 +162,7 @@ GRANT UPDATE, SELECT, INSERT, DELETE ON TABLE `hemis_db`.`incident` TO 'admin_sy
 -- -----------------------------------------------------
 --  Doctor
 -- -----------------------------------------------------
-CREATE USER 'doctor' IDENTIFIED BY 'Doctor123';
+CREATE USER 'doctor' IDENTIFIED BY 'sHjsbheV34^qhtd&';
 
 -- Core data access
 GRANT SELECT ON TABLE `hemis_db`.`identification_type` TO 'doctor';
@@ -200,7 +200,7 @@ GRANT SELECT ON TABLE `hemis_db`.`incident` TO 'doctor';
 -- -----------------------------------------------------
 --  Nurse
 -- -----------------------------------------------------
-CREATE USER 'nurse' IDENTIFIED BY 'Nurse123';
+CREATE USER 'nurse' IDENTIFIED BY 'sHjsbheV34^qhtd&';
 
 -- Core data access
 GRANT SELECT ON TABLE `hemis_db`.`identification_type` TO 'nurse';
@@ -236,7 +236,7 @@ GRANT SELECT ON TABLE `hemis_db`.`incident` TO 'nurse';
 -- -----------------------------------------------------
 --  Reception
 -- -----------------------------------------------------
-CREATE USER 'reception' IDENTIFIED BY 'Reception123';
+CREATE USER 'reception' IDENTIFIED BY 'sHjsbheV34^qhtd&';
 
 -- Core data access
 GRANT SELECT ON TABLE `hemis_db`.`identification_type` TO 'reception';
@@ -269,7 +269,7 @@ GRANT SELECT ON TABLE `hemis_db`.`appointment_invoice` TO 'reception';
 -- -----------------------------------------------------
 --  Coordinator
 -- -----------------------------------------------------
-CREATE USER 'coordinator' IDENTIFIED BY 'Coordinator123';
+CREATE USER 'coordinator' IDENTIFIED BY 'sHjsbheV34^qhtd&';
 
 -- Core data access
 GRANT SELECT ON TABLE `hemis_db`.`identification_type` TO 'coordinator';

@@ -19,7 +19,7 @@ services:
       - DB_PORT=${DB_PORT:-3306}
       - DB_NAME=${DB_NAME:-hemis_db}
       - DB_USER=${DB_USER:-santi}
-      - DB_PASSWORD=${DB_PASSWORD:-Eldestructor66*}
+      - DB_PASSWORD=${DB_PASSWORD:-password123}
       
       # Database Users for Different Roles
       - SUPER_ADMIN_DB_USER=${SUPER_ADMIN_DB_USER:-super_admin}
