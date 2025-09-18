@@ -8,7 +8,7 @@ WORKDIR /frontend
 # Install dumb-init for signal handling
 RUN apk add --no-cache dumb-init
 
-# Create non-root user (safe, no hardcoded UID/GID)
+# Create non-root user
 RUN addgroup -S hemis && \
     adduser -S -G hemis hemis-frontend-user
 
@@ -23,11 +23,7 @@ RUN npm ci --no-audit --no-fund && \
 # Copy source code
 COPY . .
 
-# Ensure permissions for build artifacts
-RUN chown -R hemis-frontend-user:hemis /frontend
-
 # Build the application
-USER hemis-frontend-user
 RUN npm run build
 
 # Stage 2: Production stage
@@ -35,16 +31,15 @@ FROM node:20-alpine AS production
 
 RUN apk add --no-cache dumb-init curl
 
-# Create same non-root user
+# Create non-root user
 RUN addgroup -S hemis && \
     adduser -S -G hemis hemis-frontend-user
 
 WORKDIR /frontend
 
-# Copy only built artifacts and minimal metadata
+# Copy built application and minimal metadata
 COPY --from=builder /frontend/dist ./dist
 COPY --from=builder /frontend/package*.json ./
-COPY --from=builder /frontend/vite.config.ts ./
 
 # Install only production dependencies
 RUN npm ci --only=production --no-audit --no-fund && \
