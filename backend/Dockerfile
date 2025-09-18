@@ -33,8 +33,8 @@ RUN apk add --no-cache \
     dumb-init
 
 # Create non-root user
-RUN addgroup -g 1000 -S hemis-backend-user && \
-    adduser -S hemis-backend-user -u 1000
+RUN addgroup -S hemis && \
+    adduser -S -G hemis hemis-backend-user
 
 # Set working directory
 WORKDIR /backend

@@ -33,8 +33,8 @@ FROM node:20-alpine AS production
 RUN apk add --no-cache dumb-init curl
 
 # Create non-root user
-RUN addgroup -g 1000 -S nodejs && \
-    adduser -S hemis-frontend-user -u 1000
+RUN addgroup -S hemis && \
+    adduser -S -G hemis hemis-frontend-user
 
 # Set working directory
 WORKDIR /frontend
