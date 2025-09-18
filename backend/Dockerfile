@@ -1,8 +1,8 @@
 # Multi-stage Dockerfile for HEMIS Backend
+
 # Stage 1: Build stage
 FROM python:3.12-alpine AS builder
 
-# Set working directory
 WORKDIR /backend
 
 # Install system dependencies
@@ -14,52 +14,43 @@ RUN apk add --no-cache \
     pkgconfig \
     curl
 
-# Create non-root user
-RUN addgroup -g 1000 -S hemis-backend-user && \
-    adduser -S hemis-backend-user -u 1000
+# Create non-root user (safe, no hardcoded UID/GID)
+RUN addgroup -S hemis && \
+    adduser -S -G hemis hemis-backend-user
 
-# Copy requirements first for better caching
+# Copy requirements first for caching
 COPY requirements.txt ./
 
-# Install Python dependencies
+# Install Python dependencies into user space
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Production stage
 FROM python:3.12-alpine AS production
 
-# Install system dependencies
-RUN apk add --no-cache \
-    curl \
-    dumb-init
+# Install runtime dependencies
+RUN apk add --no-cache curl dumb-init
 
-# Create non-root user
+# Create same non-root user
 RUN addgroup -S hemis && \
     adduser -S -G hemis hemis-backend-user
 
-# Set working directory
 WORKDIR /backend
 
 # Copy Python packages from builder
 COPY --from=builder /root/.local /home/hemis-backend-user/.local
 
-# Copy application code
-COPY --chown=hemis-backend-user:hemis-backend-user . .
+# Copy app code
+COPY --chown=hemis-backend-user:hemis . .
 
-# Add user's local bin to PATH
+# Add user’s bin to PATH
 ENV PATH=/home/hemis-backend-user/.local/bin:$PATH
 
-# Switch to non-root user
 USER hemis-backend-user
 
-# Expose port
 EXPOSE 5000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Use dumb-init for signal handling
 ENTRYPOINT ["dumb-init", "--"]
-
-# Start the application with Gunicorn
 CMD ["gunicorn", "--config", "gunicorn.conf.py", "wsgi:app"]

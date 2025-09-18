@@ -1,4 +1,5 @@
 # Multi-stage Dockerfile for HEMIS Frontend
+
 # Stage 1: Build stage
 FROM node:20-alpine AS builder
 
@@ -8,9 +9,9 @@ WORKDIR /frontend
 # Install dumb-init for signal handling
 RUN apk add --no-cache dumb-init
 
-# Create non-root user
-RUN addgroup -g 1000 -S nodejs && \
-    adduser -S hemis-frontend-user -u 1000
+# Create non-root user (safe, no hardcoded UID/GID)
+RUN addgroup -S hemis && \
+    adduser -S -G hemis hemis-frontend-user
 
 # Copy package files for caching
 COPY package*.json ./
@@ -32,17 +33,17 @@ FROM node:20-alpine AS production
 # Install dumb-init and curl
 RUN apk add --no-cache dumb-init curl
 
-# Create non-root user
+# Create non-root user (same as builder stage)
 RUN addgroup -S hemis && \
     adduser -S -G hemis hemis-frontend-user
 
 # Set working directory
 WORKDIR /frontend
 
-# Copy built application
-COPY --from=builder --chown=hemis-frontend-user:nodejs /frontend/dist ./dist
-COPY --from=builder --chown=hemis-frontend-user:nodejs /frontend/package*.json ./
-COPY --from=builder --chown=hemis-frontend-user:nodejs /frontend/vite.config.ts ./
+# Copy built application and metadata
+COPY --from=builder --chown=hemis-frontend-user:hemis /frontend/dist ./dist
+COPY --from=builder --chown=hemis-frontend-user:hemis /frontend/package*.json ./
+COPY --from=builder --chown=hemis-frontend-user:hemis /frontend/vite.config.ts ./
 
 # Install production dependencies
 RUN npm ci --only=production --no-audit --no-fund && \
@@ -52,15 +53,10 @@ RUN npm ci --only=production --no-audit --no-fund && \
 # Switch to non-root user
 USER hemis-frontend-user
 
-# Expose port
 EXPOSE 5173
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5173/ || exit 1
 
-# Use dumb-init for signal handling
 ENTRYPOINT ["dumb-init", "--"]
-
-# Start the application
 CMD ["npm", "start"]
