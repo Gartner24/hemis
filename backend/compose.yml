@@ -1,0 +1,131 @@
+services:
+  app:
+    container_name: hemis-backend
+    build: .
+    expose:
+      - "5000"
+    networks:
+      - web
+    environment:
+      # Flask Configuration
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_DEBUG=${FLASK_DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY:-your_super_secret_key_here_change_in_production}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-False}
+      - SESSION_COOKIE_HTTPONLY=${SESSION_COOKIE_HTTPONLY:-True}
+      
+      # Database Configuration
+      - DB_HOST=${DB_HOST:-host.docker.internal}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-hemis_db}
+      - DB_USER=${DB_USER:-santi}
+      - DB_PASSWORD=${DB_PASSWORD:-Eldestructor66*}
+      
+      # Database Users for Different Roles
+      - SUPER_ADMIN_DB_USER=${SUPER_ADMIN_DB_USER:-super_admin}
+      - SUPER_ADMIN_DB_PASSWORD=${SUPER_ADMIN_DB_PASSWORD:-SuperAdmin123}
+      - HR_ADMIN_DB_USER=${HR_ADMIN_DB_USER:-admin_hr}
+      - HR_ADMIN_DB_PASSWORD=${HR_ADMIN_DB_PASSWORD:-AdminHr123}
+      - MEDICAL_ADMIN_DB_USER=${MEDICAL_ADMIN_DB_USER:-admin_medical}
+      - MEDICAL_ADMIN_DB_PASSWORD=${MEDICAL_ADMIN_DB_PASSWORD:-AdminMedical123}
+      - FINANCE_ADMIN_DB_USER=${FINANCE_ADMIN_DB_USER:-admin_finance}
+      - FINANCE_ADMIN_DB_PASSWORD=${FINANCE_ADMIN_DB_PASSWORD:-AdminFinance123}
+      - SYSTEM_ADMIN_DB_USER=${SYSTEM_ADMIN_DB_USER:-admin_system}
+      - SYSTEM_ADMIN_DB_PASSWORD=${SYSTEM_ADMIN_DB_PASSWORD:-AdminSystem123}
+      - DOCTOR_DB_USER=${DOCTOR_DB_USER:-doctor}
+      - DOCTOR_DB_PASSWORD=${DOCTOR_DB_PASSWORD:-Doctor123}
+      - NURSE_DB_USER=${NURSE_DB_USER:-nurse}
+      - NURSE_DB_PASSWORD=${NURSE_DB_PASSWORD:-Nurse123}
+      - RECEPTION_DB_USER=${RECEPTION_DB_USER:-reception}
+      - RECEPTION_DB_PASSWORD=${RECEPTION_DB_PASSWORD:-Reception123}
+      - COORDINATOR_DB_USER=${COORDINATOR_DB_USER:-coordinator}
+      - COORDINATOR_DB_PASSWORD=${COORDINATOR_DB_PASSWORD:-Coordinator123}
+      
+      # Server Configuration
+      - BACKEND_PORT=${BACKEND_PORT:-5000}
+      - FRONTEND_PORT=${FRONTEND_PORT:-5173}
+      
+      # CORS Configuration
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://hemis-frontend:5173,http://localhost:5173,http://127.0.0.1:5173}
+      
+      # IoT Device Configuration
+      - IOT_API_KEY=${IOT_API_KEY:-your_iot_device_api_key}
+      - TELEMETRY_UPDATE_INTERVAL=${TELEMETRY_UPDATE_INTERVAL:-1000}
+      
+      # Test Credentials
+      - DEFAULT_SUPER_ADMIN_EMAIL=${DEFAULT_SUPER_ADMIN_EMAIL:-superadmin@clinic.test}
+      - DEFAULT_SUPER_ADMIN_PASSWORD=${DEFAULT_SUPER_ADMIN_PASSWORD:-admin123}
+      - DEFAULT_MEDICAL_ADMIN_EMAIL=${DEFAULT_MEDICAL_ADMIN_EMAIL:-medical.admin@clinic.test}
+      - DEFAULT_MEDICAL_ADMIN_PASSWORD=${DEFAULT_MEDICAL_ADMIN_PASSWORD:-admin123}
+      - DEFAULT_DOCTOR_EMAIL=${DEFAULT_DOCTOR_EMAIL:-greg.house@clinic.test}
+      - DEFAULT_DOCTOR_PASSWORD=${DEFAULT_DOCTOR_PASSWORD:-admin123}
+      - DEFAULT_NURSE_EMAIL=${DEFAULT_NURSE_EMAIL:-nurse1@clinic.test}
+      - DEFAULT_NURSE_PASSWORD=${DEFAULT_NURSE_PASSWORD:-admin123}
+      - DEFAULT_RECEPTION_EMAIL=${DEFAULT_RECEPTION_EMAIL:-reception1@clinic.test}
+      - DEFAULT_RECEPTION_PASSWORD=${DEFAULT_RECEPTION_PASSWORD:-admin123}
+      
+      # Redis Configuration
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FILE=${LOG_FILE:-hemis.log}
+      
+      # Database Connection Pool Settings
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-10}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-20}
+      - DB_POOL_TIMEOUT=${DB_POOL_TIMEOUT:-30}
+      - DB_POOL_RECYCLE=${DB_POOL_RECYCLE:-3600}
+      
+      # Role Permissions Configuration
+      - ROLE_DB_MAPPING=${ROLE_DB_MAPPING:-super_admin:hemis_db,admin_hr:hemis_db,admin_medical:hemis_db,admin_finance:hemis_db,admin_system:hemis_db,doctor:hemis_db,nurse:hemis_db,reception:hemis_db,coordinator:hemis_db}
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    user: "1000:1000"
+
+  redis:
+    container_name: hemis-redis
+    image: redis:7-alpine
+    expose:
+      - "6379"
+    networks:
+      - web
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    user: "999:999"
+
+volumes:
+  redis_data:
+
+networks:
+  web:
+    external: true

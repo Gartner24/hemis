@@ -1,0 +1,10 @@
+flask
+python-dotenv
+pymysql
+flask-cors
+Flask-Limiter
+flask-socketio
+Werkzeug
+cryptography
+gunicorn
+redis
