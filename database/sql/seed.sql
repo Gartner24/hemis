@@ -15,6 +15,9 @@
 -- Todas las contraseñas son 'admin123' por fines de demostración
 --
 
+-- Select the database
+USE hemis_db;
+
 SET NAMES utf8mb4;
 
 START TRANSACTION;
