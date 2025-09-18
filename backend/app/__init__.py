@@ -121,28 +121,25 @@ def init_extensions(app):
     initialize_websocket_service(socketio)
 
 def setup_logging(app):
-    """Setup application logging"""
-    
-    # Always set up console logging for development
-    if app.debug:
-        # Console handler for development
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-        
-        # Formatter for console
-        console_formatter = logging.Formatter(
-            '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-        )
-        console_handler.setFormatter(console_formatter)
-        
-        # Add console handler to root logger to catch all messages
-        logging.getLogger().addHandler(console_handler)
-        logging.getLogger().setLevel(logging.INFO)
-        
-        # Also set Flask app logger level
-        app.logger.setLevel(logging.INFO)
-        
-        app.logger.info('HEMIS startup - Development mode with console logging')
+    """Setup application logging (always to stdout for Docker)"""
+    # Remove default handlers
+    for handler in app.logger.handlers[:]:
+        app.logger.removeHandler(handler)
+
+    # Stream handler (stdout)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(getattr(logging, app.config.get("LOG_LEVEL", "INFO")))
+
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
+    console_handler.setFormatter(formatter)
+
+    app.logger.addHandler(console_handler)
+    app.logger.setLevel(getattr(logging, app.config.get("LOG_LEVEL", "INFO")))
+
+    mode = "Development" if app.debug else "Production"
+    app.logger.info(f"HEMIS startup - {mode} mode with console logging")
     
     # File logging for production
     if not app.debug:
