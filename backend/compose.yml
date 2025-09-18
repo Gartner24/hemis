@@ -65,7 +65,7 @@ services:
       - DEFAULT_RECEPTION_PASSWORD=${DEFAULT_RECEPTION_PASSWORD:-admin123}
       
       # Redis Configuration
-      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_HOST=${REDIS_HOST:-hemis-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=${REDIS_DB:-0}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
