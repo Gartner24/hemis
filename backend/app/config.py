@@ -90,7 +90,6 @@ class Config:
     
     # Logging Configuration
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-    LOG_FILE = os.getenv('LOG_FILE', 'hemis.log')
     
     # Database Connection Pool Settings
     DB_POOL_SIZE = int(os.getenv('DB_POOL_SIZE', 10))

@@ -140,29 +140,6 @@ def setup_logging(app):
 
     mode = "Development" if app.debug else "Production"
     app.logger.info(f"HEMIS startup - {mode} mode with console logging")
-    
-    # File logging for production
-    if not app.debug:
-        # Create logs directory if it doesn't exist
-        log_dir = os.path.dirname(app.config['LOG_FILE'])
-        if log_dir and not os.path.exists(log_dir):
-            os.makedirs(log_dir)
-        
-        # File handler
-        file_handler = logging.FileHandler(app.config['LOG_FILE'])
-        file_handler.setLevel(getattr(logging, app.config['LOG_LEVEL']))
-        
-        # Formatter
-        formatter = logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-        )
-        file_handler.setFormatter(formatter)
-        
-        # Add handler to app logger
-        app.logger.addHandler(file_handler)
-        app.logger.setLevel(getattr(logging, app.config['LOG_LEVEL']))
-        
-        app.logger.info('HEMIS startup - Production mode with file logging')
 
 def register_blueprints(app):
     """Register Flask blueprints"""
