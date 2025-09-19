@@ -19,8 +19,5 @@ export default defineConfig({
     strictPort: true,
     https: false,
     open: true,
-    proxy: {
-      '/api': 'http://hemis-backend:5000',
-    },
   },
 })
