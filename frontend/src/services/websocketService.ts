@@ -36,7 +36,10 @@ class WebSocketService {
       this.socket = io(config.WEBSOCKET_URL, {
         transports: ['websocket', 'polling'],
         autoConnect: false, // Don't auto-connect to prevent loops
-        reconnection: false, // Disable auto-reconnection to prevent loops
+        reconnection: true, // Enable auto-reconnection for stability
+        reconnectionAttempts: 5, // Limit reconnection attempts
+        reconnectionDelay: 1000, // Start with 1 second delay
+        reconnectionDelayMax: 5000, // Max 5 seconds delay
         timeout: 20000,
       });
 
@@ -106,6 +109,14 @@ class WebSocketService {
       console.error('WebSocket reconnection failed');
       this.handleError('Failed to reconnect to WebSocket server');
     });
+
+    this.socket.on('reconnect_attempt', (attemptNumber: number) => {
+      console.log(`WebSocket reconnection attempt ${attemptNumber}`);
+    });
+
+    this.socket.on('reconnect_error', (error) => {
+      console.error('WebSocket reconnection error:', error);
+    });
   }
 
   // Public methods
@@ -119,6 +130,17 @@ class WebSocketService {
     if (this.socket) {
       this.socket.disconnect();
       this.isConnected = false;
+    }
+  }
+
+  public reconnect(): void {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.isConnected = false;
+      // Small delay before reconnecting
+      setTimeout(() => {
+        this.socket?.connect();
+      }, 1000);
     }
   }
 

@@ -166,6 +166,13 @@ class WebSocketService:
             'device_id': device_id,
             'device_data': device_data
         })
+        
+        # Also broadcast to global room for real-time monitoring
+        self.broadcast_telemetry_update('global_all', {
+            'type': 'device_update',
+            'device_id': device_id,
+            'device_data': device_data
+        })
     
     def broadcast_patient_update(self, patient_id: int, patient_data: Dict[str, Any]):
         """Broadcast patient update to patient-specific room"""

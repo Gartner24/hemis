@@ -68,6 +68,9 @@ const RealTimeMonitoring: React.FC = () => {
       if (connected) {
         console.log('WebSocket connected, subscribing to global telemetry');
         webSocketService.subscribeToGlobalTelemetry();
+        setError(null); // Clear any previous errors
+      } else {
+        console.log('WebSocket disconnected');
       }
     });
 
@@ -82,18 +85,26 @@ const RealTimeMonitoring: React.FC = () => {
     webSocketService.setErrorHandler((errorMessage: string) => {
       console.error('WebSocket error:', errorMessage);
       setError(errorMessage);
-      // Don't retry on error to prevent loops
       setWsConnected(false);
     });
 
-    // Connect to WebSocket server
-    try {
-      webSocketService.connect();
-    } catch (error) {
-      console.error('Failed to connect to WebSocket:', error);
-      setError('Failed to connect to WebSocket server');
-      setWsConnected(false);
-    }
+    // Connect to WebSocket server with retry logic
+    const connectWithRetry = (retryCount = 0) => {
+      try {
+        webSocketService.connect();
+      } catch (error) {
+        console.error('Failed to connect to WebSocket:', error);
+        if (retryCount < 3) {
+          console.log(`Retrying WebSocket connection in ${(retryCount + 1) * 2} seconds...`);
+          setTimeout(() => connectWithRetry(retryCount + 1), (retryCount + 1) * 2000);
+        } else {
+          setError('Failed to connect to WebSocket server after multiple attempts');
+          setWsConnected(false);
+        }
+      }
+    };
+
+    connectWithRetry();
   };
 
   const updatePatientTelemetry = (telemetryData: TelemetryData) => {
@@ -462,6 +473,18 @@ const RealTimeMonitoring: React.FC = () => {
           <Tooltip title="Refresh data">
             <IconButton onClick={fetchRealData} size="small">
               <Refresh />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Reconnect WebSocket">
+            <IconButton 
+              onClick={() => {
+                webSocketService.reconnect();
+                setError(null);
+              }} 
+              size="small"
+              disabled={wsConnected}
+            >
+              <SignalCellular4Bar />
             </IconButton>
           </Tooltip>
         </Box>

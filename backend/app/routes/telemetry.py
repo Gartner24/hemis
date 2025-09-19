@@ -535,24 +535,35 @@ def receive_iot_data():
         
         # Broadcast real-time update via WebSocket
         try:
-            from ..services.websocket_service import broadcast_device_telemetry
+            from ..services.websocket_service import broadcast_device_telemetry, get_websocket_service
             telemetry_data = {
                 'type': 'iot_data_update',
                 'device_id': device_id,
+                'patient_id': None,  # Will be set below if device is assigned
                 'heart_rate': heart_rate,
                 'spo2': spo2,
                 'temperature': temp_skin,  # Frontend expects 'temperature'
                 'timestamp': timestamp.isoformat(),
                 'is_simulated': False
             }
-            broadcast_device_telemetry(device_id, telemetry_data)
             
-            # Also broadcast to patient room if device is assigned
+            # Get patient_id for this device
             device_query = "SELECT patient_id FROM device WHERE id = %s"
             device_result = execute_query('admin_system', device_query, (device_id,))
             if device_result and device_result[0]['patient_id']:
+                telemetry_data['patient_id'] = device_result[0]['patient_id']
+            
+            # Broadcast to device-specific room
+            broadcast_device_telemetry(device_id, telemetry_data)
+            
+            # Broadcast to global room for real-time monitoring
+            websocket_service = get_websocket_service()
+            websocket_service.broadcast_telemetry_update('global_all', telemetry_data)
+            
+            # Also broadcast to patient room if device is assigned
+            if telemetry_data['patient_id']:
                 from ..services.websocket_service import broadcast_patient_telemetry
-                broadcast_patient_telemetry(device_result[0]['patient_id'], telemetry_data)
+                broadcast_patient_telemetry(telemetry_data['patient_id'], telemetry_data)
                 
         except Exception as ws_error:
             logger.warning(f"WebSocket broadcast failed: {str(ws_error)}")
