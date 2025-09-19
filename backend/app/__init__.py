@@ -79,7 +79,7 @@ def init_extensions(app):
         limiter = Limiter(
             app=app,
             key_func=get_remote_address,
-            default_limits=["200 per day", "50 per hour"]
+            default_limits=["10000 per hour", "1000 per minute"]
         )
         app.logger.info('Rate limiting: Using in-memory storage')
     else:
@@ -95,7 +95,7 @@ def init_extensions(app):
             limiter = Limiter(
                 app=app,
                 key_func=get_remote_address,
-                default_limits=["200 per day", "50 per hour"],
+                default_limits=["10000 per hour", "1000 per minute"],
                 storage_uri=redis_url
             )
             app.logger.info(f'Rate limiting: Using Redis storage at {app.config["REDIS_HOST"]}:{app.config["REDIS_PORT"]}')
@@ -105,7 +105,7 @@ def init_extensions(app):
             limiter = Limiter(
                 app=app,
                 key_func=get_remote_address,
-                default_limits=["200 per day", "50 per hour"]
+                default_limits=["10000 per hour", "1000 per minute"]
             )
             app.logger.info('Rate limiting: Using in-memory storage')
     
