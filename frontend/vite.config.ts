@@ -12,22 +12,7 @@ export default defineConfig({
   envPrefix: 'VITE_',
   // preview allowed hosts
   preview: {
-    allowedHosts: [
-      'localhost',
-      '127.0.0.1',
-      'hemis-frontend',
-      'hemis-backend',
-      'hemis-redis',
-      'host.docker.internal',
-      'hemis.gartnercodes.com',
-      '147.93.118.183',
-      '*'
-    ],
-    cors: true,
+    allowedHosts: ['*'],
     port: 5173,
-    host: true,
-    strictPort: true,
-    https: false,
-    open: false,
   },
 })
