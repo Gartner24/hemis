@@ -40,7 +40,7 @@ WORKDIR /frontend
 # Copy built application and minimal metadata
 COPY --from=builder /frontend/dist ./dist
 COPY --from=builder /frontend/package*.json ./
-COPY --from=builder /frontend/vite.config.ts ./
+COPY --from=builder /frontend/vite.config.js ./vite.config.js
 
 # Install only production dependencies
 RUN npm ci --only=production --no-audit --no-fund && \
