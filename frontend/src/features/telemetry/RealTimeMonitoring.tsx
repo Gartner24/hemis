@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo } from 'react';
-import {Box, Grid, Card, CardContent, Typography, Chip, Avatar, Alert, IconButton, Tooltip, Paper, Fade, Skeleton} from '@mui/material';
+import {Box, Grid, Card, CardContent, Typography, Chip, Avatar, Alert, IconButton, Tooltip, Paper} from '@mui/material';
 import {Favorite, Air, Thermostat, Warning, CheckCircle, Refresh, SignalCellular4Bar, SignalCellular0Bar} from '@mui/icons-material';
 import {webSocketService, type TelemetryData} from '../../services/websocketService';
 import { config } from '../../config/environment';
