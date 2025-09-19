@@ -1,29 +1,57 @@
+# Multi-stage Dockerfile for HEMIS Frontend
+
 # Stage 1: Build stage
 FROM node:20-alpine AS builder
 
 WORKDIR /frontend
 
+# Install dumb-init for signal handling
 RUN apk add --no-cache dumb-init
 
-# Copy deps
+# Create non-root user
+RUN addgroup -S hemis && \
+    adduser -S -G hemis hemis-frontend-user
+
+# Copy package files for caching
 COPY package*.json ./
 COPY yarn.lock* ./
 
-RUN npm ci --no-audit --no-fund && npm cache clean --force
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci --no-audit --no-fund && \
+    npm cache clean --force
 
+# Copy source code
 COPY . .
 
+# Build the application
 RUN npm run build
 
-# Stage 2: Serve static files with nginx
-FROM nginx:alpine AS production
+# Stage 2: Production stage
+FROM node:20-alpine AS production
 
-# Copy build output to nginx html dir
-COPY --from=builder /frontend/dist /usr/share/nginx/html
+RUN apk add --no-cache dumb-init curl
 
-# Replace default nginx config with minimal one
-RUN rm /etc/nginx/conf.d/default.conf
+# Create non-root user
+RUN addgroup -S hemis && \
+    adduser -S -G hemis hemis-frontend-user
 
-EXPOSE 80
+WORKDIR /frontend
 
-CMD ["nginx", "-g", "daemon off;"]
+# Copy built application and minimal metadata
+COPY --from=builder /frontend/dist ./dist
+COPY --from=builder /frontend/package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production --no-audit --no-fund && \
+    npm cache clean --force && \
+    rm -rf /tmp/* /var/cache/apk/*
+
+USER hemis-frontend-user
+
+EXPOSE 5173
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5173/ || exit 1
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["npm", "start"]
