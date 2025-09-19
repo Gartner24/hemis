@@ -539,13 +539,11 @@ def receive_iot_data():
             telemetry_data = {
                 'type': 'iot_data_update',
                 'device_id': device_id,
-                'vital_signs': {
-                    'heart_rate': heart_rate,
-                    'spo2': spo2,
-                    'temp_skin': temp_skin
-                },
+                'heart_rate': heart_rate,
+                'spo2': spo2,
+                'temperature': temp_skin,  # Frontend expects 'temperature'
                 'timestamp': timestamp.isoformat(),
-                'simulated': False
+                'is_simulated': False
             }
             broadcast_device_telemetry(device_id, telemetry_data)
             

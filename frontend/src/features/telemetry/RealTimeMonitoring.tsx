@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import {Box, Grid, Card, CardContent, Typography, Chip, Avatar, LinearProgress, Alert, IconButton, Tooltip, Paper} from '@mui/material';
 import {Favorite, Air, Thermostat, Warning, CheckCircle, Refresh, SignalCellular4Bar, SignalCellular0Bar} from '@mui/icons-material';
 import {webSocketService, type TelemetryData} from '../../services/websocketService';
@@ -97,32 +97,56 @@ const RealTimeMonitoring: React.FC = () => {
   };
 
   const updatePatientTelemetry = (telemetryData: TelemetryData) => {
-    setPatients((prevPatients) =>
-      prevPatients.map((patient) => {
+    setPatients((prevPatients) => {
+      // Only update if we actually have changes to avoid unnecessary re-renders
+      const updatedPatients = prevPatients.map((patient) => {
         if (patient.patient_id === telemetryData.patient_id) {
+          const updatedDevices = patient.assigned_devices.map((device) => {
+            if (device.device_id === telemetryData.device_id) {
+              const newVitalSigns = {
+                heart_rate: telemetryData.heart_rate,
+                spo2: telemetryData.spo2,
+                temp_skin: telemetryData.temperature,
+                timestamp: telemetryData.timestamp,
+                is_simulated: telemetryData.is_simulated,
+              };
+              
+              // Only update if data actually changed
+              const currentVitalSigns = device.vital_signs;
+              if (
+                currentVitalSigns.heart_rate === newVitalSigns.heart_rate &&
+                currentVitalSigns.spo2 === newVitalSigns.spo2 &&
+                currentVitalSigns.temp_skin === newVitalSigns.temp_skin &&
+                currentVitalSigns.timestamp === newVitalSigns.timestamp
+              ) {
+                return device; // No change, return same reference
+              }
+              
+              return {
+                ...device,
+                last_reading_time: telemetryData.timestamp,
+                vital_signs: newVitalSigns,
+              };
+            }
+            return device;
+          });
+          
+          // Only update patient if devices changed
+          if (updatedDevices === patient.assigned_devices) {
+            return patient; // No change, return same reference
+          }
+          
           return {
             ...patient,
-            assigned_devices: patient.assigned_devices.map((device) => {
-              if (device.device_id === telemetryData.device_id) {
-                return {
-                  ...device,
-                  last_reading_time: telemetryData.timestamp,
-                  vital_signs: {
-                    heart_rate: telemetryData.heart_rate,
-                    spo2: telemetryData.spo2,
-                    temp_skin: telemetryData.temperature,
-                    timestamp: telemetryData.timestamp,
-                    is_simulated: telemetryData.is_simulated,
-                  },
-                };
-              }
-              return device;
-            }),
+            assigned_devices: updatedDevices,
           };
         }
         return patient;
-      })
-    );
+      });
+      
+      // Only update state if something actually changed
+      return updatedPatients;
+    });
   };
 
   const fetchRealData = async () => {
@@ -250,7 +274,7 @@ const RealTimeMonitoring: React.FC = () => {
   const VitalSignsCard: React.FC<{
     vitalSigns: VitalSigns;
     device: Device;
-  }> = ({ vitalSigns, device }) => {
+  }> = memo(({ vitalSigns, device }) => {
     const status = getVitalSignsStatus(vitalSigns);
 
     return (
@@ -360,9 +384,9 @@ const RealTimeMonitoring: React.FC = () => {
         </CardContent>
       </Card>
     );
-  };
+  });
 
-  const PatientMonitor: React.FC<{ patient: Patient }> = ({ patient }) => (
+  const PatientMonitor: React.FC<{ patient: Patient }> = memo(({ patient }) => (
     <Paper sx={{ p: 3, mb: 3 }}>
       <Box
         display="flex"
@@ -393,7 +417,7 @@ const RealTimeMonitoring: React.FC = () => {
         ))}
       </Grid>
     </Paper>
-  );
+  ));
 
   if (loading) {
     return <LinearProgress />;

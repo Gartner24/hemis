@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Chip, IconButton, Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, Card, CardContent, Avatar, Alert, LinearProgress } from '@mui/material';
 import { Add, Edit, Delete, Visibility, Person, MedicalServices, MonitorHeart, Search, FilterList, } from '@mui/icons-material';
 import { config } from '../../config/environment';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Patient {
   patient_id: number;
@@ -23,6 +24,7 @@ interface Device {
 }
 
 const PatientList: React.FC = () => {
+  const { user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +41,9 @@ const PatientList: React.FC = () => {
     room_number: '',
     medical_record_number: '',
   });
+
+  // Check if user can manage patients (admin roles only)
+  const canManagePatients = user?.role && ['super_admin', 'admin_medical', 'admin_hr'].includes(user.role);
 
   useEffect(() => {
     fetchPatients();
@@ -259,13 +264,15 @@ const PatientList: React.FC = () => {
             Manage patient records and device assignments
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => handleOpenDialog()}
-        >
-          Add Patient
-        </Button>
+            {canManagePatients && (
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => handleOpenDialog()}
+              >
+                Add Patient
+              </Button>
+            )}
       </Box>
 
       {error && (
@@ -453,33 +460,39 @@ const PatientList: React.FC = () => {
                   <TableCell>
                     {new Date(patient.admission_date).toLocaleDateString()}
                   </TableCell>
-                  <TableCell align="center">
-                    <Box display="flex" gap={1}>
-                      <Tooltip title="View Details">
-                        <IconButton size="small" color="primary">
-                          <Visibility />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit Patient">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleOpenDialog(patient)}
-                        >
-                          <Edit />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete Patient">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeletePatient(patient.patient_id)}
-                        >
-                          <Delete />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
+                      <TableCell align="center">
+                        <Box display="flex" gap={1}>
+                          <Tooltip title="View Details">
+                            <IconButton size="small" color="primary">
+                              <Visibility />
+                            </IconButton>
+                          </Tooltip>
+                          {canManagePatients && (
+                            <>
+                              <Tooltip title="Edit Patient">
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => handleOpenDialog(patient)}
+                                >
+                                  <Edit />
+                                </IconButton>
+                              </Tooltip>
+                              {user?.role === 'super_admin' && (
+                                <Tooltip title="Delete Patient">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => handleDeletePatient(patient.patient_id)}
+                                  >
+                                    <Delete />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </>
+                          )}
+                        </Box>
+                      </TableCell>
                 </TableRow>
               ))}
           </TableBody>

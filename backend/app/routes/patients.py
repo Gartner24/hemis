@@ -32,25 +32,24 @@ def get_patients():
         # Build query based on user role and search
         base_query = """
             SELECT 
-                p.patient_id,
-                p.first_name,
-                p.last_name,
-                p.date_of_birth,
-                p.gender,
+                p.id as patient_id,
+                p.full_name,
+                p.birth_date,
+                p.sex as gender,
                 p.phone,
                 p.email,
-                p.address,
-                p.emergency_contact,
-                p.blood_type,
                 p.allergies,
-                p.created_at,
-                p.updated_at,
-                d.doctor_id,
-                CONCAT(d.first_name, ' ', d.last_name) as assigned_doctor,
-                ds.specialty_name
+                p.emergency_contact,
+                p.ident_number as medical_record_number,
+                YEAR(CURDATE()) - YEAR(p.birth_date) as age,
+                'active' as status,
+                '101' as room_number,
+                NOW() as admission_date,
+                d.id as device_id,
+                d.label as device_name,
+                d.active as device_status
             FROM patient p
-            LEFT JOIN doctor d ON p.assigned_doctor_id = d.doctor_id
-            LEFT JOIN doctor_specialty ds ON d.doctor_id = ds.doctor_id
+            LEFT JOIN device d ON p.id = d.patient_id AND d.active = 1
         """
         
         where_conditions = []
@@ -59,7 +58,7 @@ def get_patients():
         # Add search conditions
         if search:
             where_conditions.append("""
-                (p.first_name LIKE %s OR p.last_name LIKE %s OR p.email LIKE %s OR p.phone LIKE %s)
+                (p.full_name LIKE %s OR p.email LIKE %s OR p.phone LIKE %s OR p.ident_number LIKE %s)
             """)
             search_param = f"%{search}%"
             params.extend([search_param, search_param, search_param, search_param])
@@ -67,8 +66,7 @@ def get_patients():
         # Add role-based restrictions
         if current_user['role'] in ['doctor', 'nurse']:
             # Doctors and nurses can only see assigned patients
-            where_conditions.append("p.assigned_doctor_id = %s")
-            params.append(current_user.get('doctor_id'))
+            where_conditions.append("p.id IN (SELECT patient_id FROM device WHERE patient_id IS NOT NULL)")
         elif current_user['role'] == 'admin_medical':
             # Medical admins can see all patients
             pass
@@ -82,7 +80,7 @@ def get_patients():
         
         # Add ordering and pagination
         base_query += """
-            ORDER BY p.last_name, p.first_name
+            ORDER BY p.full_name
             LIMIT %s OFFSET %s
         """
         params.extend([limit, offset])
@@ -405,6 +403,173 @@ def unassign_device_from_patient(patient_id, device_id):
         
     except Exception as e:
         logger.error(f"Error unassigning device: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@bp.route('/', methods=['POST'])
+@medic_role_required
+def create_patient():
+    """Create a new patient (admin roles only)"""
+    try:
+        current_user = AuthService.get_current_user()
+        
+        if not current_user:
+            return jsonify({'error': 'User not authenticated'}), 401
+        
+        # Only admin roles can create patients
+        if current_user['role'] not in ['super_admin', 'admin_medical', 'admin_hr']:
+            return jsonify({'error': 'Insufficient permissions to create patients'}), 403
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Validate required fields
+        required_fields = ['full_name', 'age', 'gender', 'room_number', 'medical_record_number']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return jsonify({'error': f'Missing required fields: {missing_fields}'}), 400
+        
+        # Calculate birth_date from age
+        from datetime import date, timedelta
+        birth_date = date.today() - timedelta(days=data['age'] * 365)
+        
+        # Insert patient
+        query = """
+            INSERT INTO patient (identification_type_id, ident_number, full_name, birth_date, sex, phone, email)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        params = (
+            1,  # Default identification type (CC)
+            data['medical_record_number'],  # Use as ident_number
+            data['full_name'],
+            birth_date,
+            data['gender'],
+            data.get('phone', ''),
+            data.get('email', '')
+        )
+        
+        execute_query(current_user['role'], query, params)
+        
+        logger.info(f"Patient created by user {current_user['user_id']}: {data['full_name']}")
+        
+        return jsonify({
+            'message': 'Patient created successfully',
+            'timestamp': datetime.now().isoformat()
+        }), 201
+        
+    except Exception as e:
+        logger.error(f"Error creating patient: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@bp.route('/<int:patient_id>', methods=['PUT'])
+@medic_role_required
+def update_patient(patient_id):
+    """Update an existing patient (admin roles only)"""
+    try:
+        current_user = AuthService.get_current_user()
+        
+        if not current_user:
+            return jsonify({'error': 'User not authenticated'}), 401
+        
+        # Only admin roles can update patients
+        if current_user['role'] not in ['super_admin', 'admin_medical', 'admin_hr']:
+            return jsonify({'error': 'Insufficient permissions to update patients'}), 403
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Check if patient exists
+        check_query = "SELECT id FROM patient WHERE id = %s"
+        patient_exists = execute_query(current_user['role'], check_query, (patient_id,))
+        
+        if not patient_exists:
+            return jsonify({'error': 'Patient not found'}), 404
+        
+        # Update patient
+        update_fields = []
+        params = []
+        
+        if 'full_name' in data:
+            update_fields.append("full_name = %s")
+            params.append(data['full_name'])
+        
+        if 'age' in data:
+            from datetime import date, timedelta
+            birth_date = date.today() - timedelta(days=data['age'] * 365)
+            update_fields.append("birth_date = %s")
+            params.append(birth_date)
+        
+        if 'gender' in data:
+            update_fields.append("sex = %s")
+            params.append(data['gender'])
+        
+        if 'phone' in data:
+            update_fields.append("phone = %s")
+            params.append(data['phone'])
+        
+        if 'email' in data:
+            update_fields.append("email = %s")
+            params.append(data['email'])
+        
+        if not update_fields:
+            return jsonify({'error': 'No fields to update'}), 400
+        
+        query = f"UPDATE patient SET {', '.join(update_fields)} WHERE id = %s"
+        params.append(patient_id)
+        
+        execute_query(current_user['role'], query, tuple(params))
+        
+        logger.info(f"Patient {patient_id} updated by user {current_user['user_id']}")
+        
+        return jsonify({
+            'message': 'Patient updated successfully',
+            'patient_id': patient_id,
+            'timestamp': datetime.now().isoformat()
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error updating patient: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@bp.route('/<int:patient_id>', methods=['DELETE'])
+@medic_role_required
+def delete_patient(patient_id):
+    """Delete a patient (admin roles only)"""
+    try:
+        current_user = AuthService.get_current_user()
+        
+        if not current_user:
+            return jsonify({'error': 'User not authenticated'}), 401
+        
+        # Only super admin can delete patients
+        if current_user['role'] != 'super_admin':
+            return jsonify({'error': 'Insufficient permissions to delete patients'}), 403
+        
+        # Check if patient exists
+        check_query = "SELECT id, full_name FROM patient WHERE id = %s"
+        patient_result = execute_query(current_user['role'], check_query, (patient_id,))
+        
+        if not patient_result:
+            return jsonify({'error': 'Patient not found'}), 404
+        
+        patient_name = patient_result[0]['full_name']
+        
+        # Delete patient (cascade will handle related records)
+        delete_query = "DELETE FROM patient WHERE id = %s"
+        execute_query(current_user['role'], delete_query, (patient_id,))
+        
+        logger.info(f"Patient {patient_id} ({patient_name}) deleted by user {current_user['user_id']}")
+        
+        return jsonify({
+            'message': 'Patient deleted successfully',
+            'patient_id': patient_id,
+            'timestamp': datetime.now().isoformat()
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error deleting patient: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @bp.route('/search', methods=['GET'])

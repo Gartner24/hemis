@@ -3,7 +3,7 @@ import { config } from '../config/environment';
 
 export interface TelemetryData {
   device_id: number;
-  patient_id: number;
+  patient_id?: number;  // Optional since it might not always be present
   heart_rate: number;
   spo2: number;
   temperature: number;
