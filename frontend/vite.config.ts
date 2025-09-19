@@ -10,4 +10,8 @@ export default defineConfig({
   ],
   // Environment variables that will be available in the app
   envPrefix: 'VITE_',
+  // preview allowed hosts
+  preview: {
+    allowedHosts: ['localhost', '127.0.0.1', 'hemis-frontend', 'hemis-backend', 'hemis-redis', 'host.docker.internal', 'hemis.gartnercodes.com'],
+  },
 })
