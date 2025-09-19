@@ -50,7 +50,7 @@ const RealTimeMonitoring: React.FC = () => {
       clearInterval(interval);
       webSocketService.disconnect();
     };
-  }, [wsConnected]);
+  }, []); // Empty dependency array - setup only once
 
   const setupWebSocket = () => {
     // Prevent multiple setups by checking if handlers are already set
