@@ -42,16 +42,20 @@ const RealTimeMonitoring: React.FC = () => {
     // Fetch initial data
     fetchRealData();
 
+    // Start backend polling
+    startBackendPolling();
+
     // Set up subtle fallback polling every 30 seconds (only when WebSocket is truly disconnected)
     const interval = setInterval(() => {
       if (!wsConnected && initialLoadComplete) {
         console.log('WebSocket disconnected, using fallback polling...');
         fetchRealDataSilently();
       }
-    }, 30000); // Increased to 30 seconds to be less intrusive
+    }, 30000); // Back to 30 seconds since backend now polls every 1 second
 
     return () => {
       clearInterval(interval);
+      stopBackendPolling();
       webSocketService.disconnect();
     };
   }, []); // Empty dependency array - setup only once
@@ -190,8 +194,6 @@ const RealTimeMonitoring: React.FC = () => {
       setInitialLoadComplete(true);
       setLastUpdate(new Date());
       
-      console.log('Fetched real patient data:', patientsWithDevices);
-      
     } catch (err) {
       console.error('Error fetching real data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch patient data');
@@ -276,6 +278,48 @@ const RealTimeMonitoring: React.FC = () => {
 
     setPatients(mockPatients);
     setInitialLoadComplete(true);
+  };
+
+  const startBackendPolling = async () => {
+    try {
+      const response = await fetch(`${config.API_BASE_URL}/telemetry/polling/start`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Backend polling started:', data.message);
+      } else {
+        console.warn('Failed to start backend polling');
+      }
+    } catch (err) {
+      console.error('Error starting backend polling:', err);
+    }
+  };
+
+  const stopBackendPolling = async () => {
+    try {
+      const response = await fetch(`${config.API_BASE_URL}/telemetry/polling/stop`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Backend polling stopped:', data.message);
+      } else {
+        console.warn('Failed to stop backend polling');
+      }
+    } catch (err) {
+      console.error('Error stopping backend polling:', err);
+    }
   };
 
   const getVitalSignsStatus = (vitalSigns: VitalSigns) => {

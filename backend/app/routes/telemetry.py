@@ -10,9 +10,112 @@ from ..models.telemetry_models import TelemetryData, DeviceStatus
 import logging
 from datetime import datetime, timedelta
 import json
+import threading
+import time
 
 bp = Blueprint('telemetry', __name__)
 logger = logging.getLogger(__name__)
+
+# Global variable to track polling state
+_polling_active = False
+_polling_thread = None
+
+def start_telemetry_polling():
+    """Start background polling for telemetry data every 1 second"""
+    global _polling_active, _polling_thread
+    
+    if _polling_active:
+        logger.info("Telemetry polling already active")
+        return
+    
+    _polling_active = True
+    logger.info("Starting telemetry polling every 1 second...")
+    
+    def poll_telemetry_data():
+        while _polling_active:
+            try:
+                # Get latest readings for all active devices
+                query = """
+                    SELECT 
+                        r.device_id,
+                        m.code as metric_code,
+                        r.value,
+                        r.ts,
+                        d.patient_id
+                    FROM reading r
+                    JOIN metric m ON r.metric_id = m.id
+                    JOIN device d ON r.device_id = d.id
+                    WHERE d.active = 1
+                    AND r.ts >= %s
+                    ORDER BY r.device_id, m.code, r.ts DESC
+                """
+                
+                # Get readings from last 2 seconds to catch recent updates
+                cutoff_time = datetime.now() - timedelta(seconds=2)
+                readings = execute_query('admin_system', query, (cutoff_time,))
+                
+                if readings:
+                    # Group readings by device
+                    device_data = {}
+                    for reading in readings:
+                        device_id = reading['device_id']
+                        if device_id not in device_data:
+                            device_data[device_id] = {
+                                'device_id': device_id,
+                                'patient_id': reading['patient_id'],
+                                'heart_rate': 0,
+                                'spo2': 0,
+                                'temperature': 0,
+                                'timestamp': reading['ts'],
+                                'is_simulated': False
+                            }
+                        
+                        # Update the latest value for each metric
+                        metric_code = reading['metric_code']
+                        if metric_code == 'heart_rate':
+                            device_data[device_id]['heart_rate'] = reading['value']
+                        elif metric_code == 'spo2':
+                            device_data[device_id]['spo2'] = reading['value']
+                        elif metric_code == 'temp_skin':
+                            device_data[device_id]['temperature'] = reading['value']
+                            device_data[device_id]['timestamp'] = reading['ts']
+                    
+                    # Broadcast updates for each device
+                    for device_id, telemetry_data in device_data.items():
+                        try:
+                            from ..services.websocket_service import get_websocket_service
+                            websocket_service = get_websocket_service()
+                            
+                            # Broadcast to global room
+                            websocket_service.broadcast_telemetry_update('global_all', telemetry_data)
+                            
+                            # Broadcast to device-specific room
+                            websocket_service.broadcast_telemetry_update(f'device_{device_id}', telemetry_data)
+                            
+                            # Broadcast to patient room if device is assigned
+                            if telemetry_data['patient_id']:
+                                websocket_service.broadcast_telemetry_update(f'patient_{telemetry_data["patient_id"]}', telemetry_data)
+                                
+                        except Exception as ws_error:
+                            logger.debug(f"WebSocket broadcast failed for device {device_id}: {str(ws_error)}")
+                
+            except Exception as e:
+                logger.error(f"Error in telemetry polling: {str(e)}")
+            
+            time.sleep(1)  # Poll every 1 second
+    
+    _polling_thread = threading.Thread(target=poll_telemetry_data, daemon=True)
+    _polling_thread.start()
+
+def stop_telemetry_polling():
+    """Stop background polling for telemetry data"""
+    global _polling_active
+    _polling_active = False
+    logger.info("Stopped telemetry polling")
+
+def is_polling_active():
+    """Check if telemetry polling is active"""
+    return _polling_active
 
 @bp.route('/', methods=['GET'])
 @medic_role_required
@@ -108,6 +211,10 @@ def get_telemetry_overview():
 def get_patients_with_devices():
     """Get all patients with their assigned devices and latest vital signs for frontend"""
     try:
+        # Start polling if not already active
+        if not is_polling_active():
+            start_telemetry_polling()
+        
         current_user = AuthService.get_current_user()
         if not current_user:
             return jsonify({'error': 'User not authenticated'}), 401
@@ -678,3 +785,44 @@ def get_telemetry_alerts():
     except Exception as e:
         logger.error(f"Error getting telemetry alerts: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
+
+@bp.route('/polling/start', methods=['POST'])
+@login_required
+def start_polling():
+    """Start telemetry polling"""
+    try:
+        if is_polling_active():
+            return jsonify({'message': 'Polling already active', 'status': 'active'}), 200
+        
+        start_telemetry_polling()
+        return jsonify({'message': 'Telemetry polling started', 'status': 'started'}), 200
+        
+    except Exception as e:
+        logger.error(f"Error starting polling: {str(e)}")
+        return jsonify({'error': 'Failed to start polling'}), 500
+
+@bp.route('/polling/stop', methods=['POST'])
+@login_required
+def stop_polling():
+    """Stop telemetry polling"""
+    try:
+        stop_telemetry_polling()
+        return jsonify({'message': 'Telemetry polling stopped', 'status': 'stopped'}), 200
+        
+    except Exception as e:
+        logger.error(f"Error stopping polling: {str(e)}")
+        return jsonify({'error': 'Failed to stop polling'}), 500
+
+@bp.route('/polling/status', methods=['GET'])
+@login_required
+def polling_status():
+    """Get telemetry polling status"""
+    try:
+        return jsonify({
+            'polling_active': is_polling_active(),
+            'status': 'active' if is_polling_active() else 'inactive'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting polling status: {str(e)}")
+        return jsonify({'error': 'Failed to get polling status'}), 500
