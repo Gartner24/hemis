@@ -1,13 +1,8 @@
 services:
   app:
     container_name: hemis-backend
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     build: .
-    expose:
-      - "5000"
-    networks:
-      - web
+    network_mode: "host"
     env_file:
       - .env
     depends_on:
