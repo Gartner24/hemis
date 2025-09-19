@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo } from 'react';
-import {Box, Grid, Card, CardContent, Typography, Chip, Avatar, LinearProgress, Alert, IconButton, Tooltip, Paper} from '@mui/material';
+import {Box, Grid, Card, CardContent, Typography, Chip, Avatar, Alert, IconButton, Tooltip, Paper, Fade, Skeleton} from '@mui/material';
 import {Favorite, Air, Thermostat, Warning, CheckCircle, Refresh, SignalCellular4Bar, SignalCellular0Bar} from '@mui/icons-material';
 import {webSocketService, type TelemetryData} from '../../services/websocketService';
 import { config } from '../../config/environment';
@@ -30,7 +30,7 @@ interface Device {
 
 const RealTimeMonitoring: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [wsConnected, setWsConnected] = useState(false);
@@ -42,13 +42,13 @@ const RealTimeMonitoring: React.FC = () => {
     // Fetch initial data
     fetchRealData();
 
-    // Set up fallback polling every 10 seconds (if WebSocket fails)
+    // Set up subtle fallback polling every 30 seconds (only when WebSocket is truly disconnected)
     const interval = setInterval(() => {
-      if (!wsConnected) {
-        fetchRealData();
-        setLastUpdate(new Date());
+      if (!wsConnected && initialLoadComplete) {
+        console.log('WebSocket disconnected, using fallback polling...');
+        fetchRealDataSilently();
       }
-    }, 10000);
+    }, 30000); // Increased to 30 seconds to be less intrusive
 
     return () => {
       clearInterval(interval);
@@ -162,7 +162,6 @@ const RealTimeMonitoring: React.FC = () => {
 
   const fetchRealData = async () => {
     try {
-      setLoading(true);
       setError(null);
 
       const response = await fetch(`${config.API_BASE_URL}/telemetry/patients-with-devices`, {
@@ -188,18 +187,43 @@ const RealTimeMonitoring: React.FC = () => {
       );
       
       setPatients(patientsWithDevices);
-      setLoading(false);
+      setInitialLoadComplete(true);
+      setLastUpdate(new Date());
       
       console.log('Fetched real patient data:', patientsWithDevices);
       
     } catch (err) {
       console.error('Error fetching real data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch patient data');
-      setLoading(false);
       
       // Fallback to mock data if API fails
       console.log('Falling back to mock data');
       fetchMockData();
+    }
+  };
+
+  const fetchRealDataSilently = async () => {
+    try {
+      const response = await fetch(`${config.API_BASE_URL}/telemetry/patients-with-devices`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const patientsWithDevices = data.patients.filter((patient: Patient) => 
+          patient.assigned_devices && patient.assigned_devices.length > 0
+        );
+        
+        setPatients(patientsWithDevices);
+        setLastUpdate(new Date());
+        console.log('Silent data refresh completed');
+      }
+    } catch (err) {
+      console.error('Silent data refresh failed:', err);
     }
   };
 
@@ -251,7 +275,7 @@ const RealTimeMonitoring: React.FC = () => {
     ];
 
     setPatients(mockPatients);
-    setLoading(false);
+    setInitialLoadComplete(true);
   };
 
   const getVitalSignsStatus = (vitalSigns: VitalSigns) => {
@@ -289,7 +313,16 @@ const RealTimeMonitoring: React.FC = () => {
     const status = getVitalSignsStatus(vitalSigns);
 
     return (
-      <Card sx={{ height: '100%', position: 'relative' }}>
+      <Fade in={true} timeout={300}>
+        <Card sx={{ 
+          height: '100%', 
+          position: 'relative',
+          transition: 'all 0.3s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: 3
+          }
+        }}>
         <CardContent>
           <Box
             display="flex"
@@ -323,7 +356,14 @@ const RealTimeMonitoring: React.FC = () => {
                 >
                   <Favorite />
                 </Avatar>
-                <Typography variant="h4" color="textPrimary">
+                <Typography 
+                  variant="h4" 
+                  color="textPrimary"
+                  sx={{
+                    transition: 'all 0.3s ease-in-out',
+                    '&:hover': { transform: 'scale(1.05)' }
+                  }}
+                >
                   {vitalSigns.heart_rate}
                 </Typography>
                 <Typography variant="caption" color="textSecondary">
@@ -346,7 +386,14 @@ const RealTimeMonitoring: React.FC = () => {
                 >
                   <Air />
                 </Avatar>
-                <Typography variant="h4" color="textPrimary">
+                <Typography 
+                  variant="h4" 
+                  color="textPrimary"
+                  sx={{
+                    transition: 'all 0.3s ease-in-out',
+                    '&:hover': { transform: 'scale(1.05)' }
+                  }}
+                >
                   {vitalSigns.spo2}%
                 </Typography>
                 <Typography variant="caption" color="textSecondary">
@@ -369,7 +416,14 @@ const RealTimeMonitoring: React.FC = () => {
                 >
                   <Thermostat />
                 </Avatar>
-                <Typography variant="h4" color="textPrimary">
+                <Typography 
+                  variant="h4" 
+                  color="textPrimary"
+                  sx={{
+                    transition: 'all 0.3s ease-in-out',
+                    '&:hover': { transform: 'scale(1.05)' }
+                  }}
+                >
                   {vitalSigns.temp_skin}°C
                 </Typography>
                 <Typography variant="caption" color="textSecondary">
@@ -393,7 +447,8 @@ const RealTimeMonitoring: React.FC = () => {
             )}
           </Box>
         </CardContent>
-      </Card>
+        </Card>
+      </Fade>
     );
   });
 
@@ -429,10 +484,6 @@ const RealTimeMonitoring: React.FC = () => {
       </Grid>
     </Paper>
   ));
-
-  if (loading) {
-    return <LinearProgress />;
-  }
 
   if (error) {
     return (
@@ -490,17 +541,62 @@ const RealTimeMonitoring: React.FC = () => {
         </Box>
       </Box>
 
-      {patients.length === 0 ? (
-        <Alert severity="info">
-          No patients with assigned devices found. Please assign devices to
-          patients to start monitoring.
-        </Alert>
-      ) : (
+      {/* Show skeleton loading only for initial load */}
+      {!initialLoadComplete && (
         <Box>
-          {patients.map((patient) => (
-            <PatientMonitor key={patient.patient_id} patient={patient} />
+          {[1, 2].map((i) => (
+            <Paper key={i} sx={{ p: 3, mb: 3 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Box>
+                  <Skeleton variant="text" width={200} height={40} />
+                  <Skeleton variant="text" width={150} height={20} />
+                </Box>
+                <Skeleton variant="rectangular" width={100} height={32} />
+              </Box>
+              <Grid container spacing={3}>
+                {[1, 2].map((j) => (
+                  <Grid item xs={12} md={6} key={j}>
+                    <Card sx={{ height: '100%' }}>
+                      <CardContent>
+                        <Skeleton variant="text" width={150} height={30} />
+                        <Grid container spacing={2} sx={{ mt: 2 }}>
+                          {[1, 2, 3].map((k) => (
+                            <Grid item xs={4} key={k}>
+                              <Box textAlign="center">
+                                <Skeleton variant="circular" width={48} height={48} sx={{ mx: 'auto', mb: 1 }} />
+                                <Skeleton variant="text" width={60} height={40} />
+                                <Skeleton variant="text" width={40} height={20} />
+                              </Box>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Paper>
           ))}
         </Box>
+      )}
+
+      {initialLoadComplete && (
+        <Fade in={initialLoadComplete} timeout={500}>
+          <Box>
+            {patients.length === 0 ? (
+              <Alert severity="info">
+                No patients with assigned devices found. Please assign devices to
+                patients to start monitoring.
+              </Alert>
+            ) : (
+              <Box>
+                {patients.map((patient) => (
+                  <PatientMonitor key={patient.patient_id} patient={patient} />
+                ))}
+              </Box>
+            )}
+          </Box>
+        </Fade>
       )}
 
       <Box mt={4}>
