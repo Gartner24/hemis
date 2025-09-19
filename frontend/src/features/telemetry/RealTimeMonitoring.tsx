@@ -42,20 +42,14 @@ const RealTimeMonitoring: React.FC = () => {
     // Fetch initial data
     fetchRealData();
 
-    // Start backend polling
-    startBackendPolling();
-
-    // Set up subtle fallback polling every 30 seconds (only when WebSocket is truly disconnected)
+    // Set up polling every 1 second for real-time updates
     const interval = setInterval(() => {
-      if (!wsConnected && initialLoadComplete) {
-        console.log('WebSocket disconnected, using fallback polling...');
-        fetchRealDataSilently();
-      }
-    }, 30000); // Back to 30 seconds since backend now polls every 1 second
+      fetchRealDataSilently();
+      setLastUpdate(new Date());
+    }, 1000); // 1 second polling for real-time feel
 
     return () => {
       clearInterval(interval);
-      stopBackendPolling();
       webSocketService.disconnect();
     };
   }, []); // Empty dependency array - setup only once
@@ -280,47 +274,6 @@ const RealTimeMonitoring: React.FC = () => {
     setInitialLoadComplete(true);
   };
 
-  const startBackendPolling = async () => {
-    try {
-      const response = await fetch(`${config.API_BASE_URL}/telemetry/polling/start`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Backend polling started:', data.message);
-      } else {
-        console.warn('Failed to start backend polling');
-      }
-    } catch (err) {
-      console.error('Error starting backend polling:', err);
-    }
-  };
-
-  const stopBackendPolling = async () => {
-    try {
-      const response = await fetch(`${config.API_BASE_URL}/telemetry/polling/stop`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Backend polling stopped:', data.message);
-      } else {
-        console.warn('Failed to stop backend polling');
-      }
-    } catch (err) {
-      console.error('Error stopping backend polling:', err);
-    }
-  };
 
   const getVitalSignsStatus = (vitalSigns: VitalSigns) => {
     const { heart_rate, spo2, temp_skin } = vitalSigns;

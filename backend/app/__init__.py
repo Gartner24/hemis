@@ -145,13 +145,12 @@ def register_blueprints(app):
     """Register Flask blueprints"""
     
     # Import blueprints here to avoid circular imports
-    from .routes import auth, patients, telemetry, vital_signs
+    from .routes import auth, patients, telemetry
     
     # Register blueprints
     app.register_blueprint(auth.bp, url_prefix='/api/auth')
     app.register_blueprint(patients.bp, url_prefix='/api/patients')
     app.register_blueprint(telemetry.bp, url_prefix='/api/telemetry')
-    app.register_blueprint(vital_signs.bp, url_prefix='/api/vital-signs')
     
     # Health check endpoint
     @app.route('/health')
