@@ -37,9 +37,7 @@ const RealTimeMonitoring: React.FC = () => {
 
   useEffect(() => {
     // Initialize WebSocket connection only once
-    if (!wsConnected) {
-      setupWebSocket();
-    }
+    setupWebSocket();
 
     // Fetch initial data
     fetchRealData();
@@ -56,11 +54,11 @@ const RealTimeMonitoring: React.FC = () => {
       clearInterval(interval);
       webSocketService.disconnect();
     };
-  }, []); // Remove wsConnected dependency to prevent loops
+  }, []); // Empty dependency array - setup only once
 
   const setupWebSocket = () => {
-    // Prevent multiple setups
-    if (wsConnected) {
+    // Prevent multiple setups by checking if handlers are already set
+    if (webSocketService.isConnectedToServer()) {
       return;
     }
 
