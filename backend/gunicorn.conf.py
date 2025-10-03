@@ -8,9 +8,9 @@ backlog = 2048
 
 # Worker processes
 workers = multiprocessing.cpu_count() * 2 + 1
-worker_class = 'sync'
+worker_class = 'eventlet'  # Better for WebSocket support
 worker_connections = 1000
-timeout = 30
+timeout = 120  # Increased timeout for WebSocket connections
 keepalive = 2
 
 # Restart workers after this many requests, to help prevent memory leaks

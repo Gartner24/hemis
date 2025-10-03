@@ -3,6 +3,9 @@ Flask Application Factory for HEMIS
 Creates and configures the Flask application
 """
 
+import eventlet
+eventlet.monkey_patch()  # Required for eventlet worker
+
 from datetime import timedelta
 from flask import Flask
 from flask_cors import CORS
@@ -113,7 +116,7 @@ def init_extensions(app):
     app.limiter = limiter
     
     # Initialize SocketIO for WebSocket support
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
     app.socketio = socketio
     
     # Initialize WebSocket service
